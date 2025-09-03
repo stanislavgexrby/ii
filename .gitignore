@@ -3,3 +3,4 @@
 service-account.json
 secretinfo.txt
 config.py
+__pycache__
