@@ -1,3 +1,5 @@
 .vscode/
 .venv/
 service-account.json
+secretinfo.txt
+config.py
