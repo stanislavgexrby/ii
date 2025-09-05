@@ -56,7 +56,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return CHECK_SUBSCRIPTION
 
     await update.message.reply_text(
-        "Добро пожаловать, дядя! Выберите действие:",
+        "Добро пожаловать! Выберите действие:",
         reply_markup = create_main_menu_keyboard()
     )
     return MAIN_MENU
