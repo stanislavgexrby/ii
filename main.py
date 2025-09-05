@@ -1,118 +1,67 @@
-import sys
+from tgbot_for_cg import init_google_sheets, handle_main_menu, check_subscription_handler
+from tgbot_for_cg import start, cancel
+from tgbot_for_cg import single_poll_age, single_poll_name, multi_poll_age, multi_poll_name
+from tgbot_for_cg import BOT_TOKEN
+from tgbot_for_cg import logger
+from tgbot_for_cg import (
+    user_data,
+    MAIN_MENU,
+    CHECK_SUBSCRIPTION,
+    SINGLE_POLL_AGE,
+    SINGLE_POLL_NAME,
+    MULTI_POLL_COUNT,
+    MULTI_POLL_CURRENT_AGE,
+    MULTI_POLL_CURRENT_NAME
+)
 
-try:
-    import requests
-    import os
-    import gspread
-    from google.oauth2.service_account import Credentials
-    import smtplib
-    from email.mime.text import MIMEText
-    import gspread
-    from google.oauth2.service_account import Credentials
-except ImportError as e:
-    print("Ошибка: Не установлены необходимые зависимости.")
-    print("Установите их командой: pip install -r requirements.txt")
-    print(f"Отсутствующая библиотека: {e.name}")
-    sys.exit(1)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ConversationHandler,
+    filters
+)
 
-def ask_ollama(prompt, model="mistral:7b"):
-    url = "http://localhost:11434/api/generate"
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "stream": False,
-        "options": {"temperature": 0.7}
-    }
+def main():
+    worksheet = init_google_sheets()
+    if worksheet:
+        logger.info("Подключение к Google Таблицам установлено")
+    else:
+        logger.warning("Не удалось подключиться к Google Таблицам. Данные не будут сохраняться.")
+    application = Application.builder().token(BOT_TOKEN).build()
 
-    try:
-        response = requests.post(url, json=payload)
-        return response.json().get("response", "Ошибка: пустой ответ")
-    except Exception as e:
-        return f"Ошибка запроса: {str(e)}"
-
-# if __name__ == "__main__":
-#     while True:
-#         user_input = input("\nВы: ")
-#         if user_input.lower() in ['exit', 'выход']:
-#             break
-#
-#         response = ask_ollama(user_input)
-#         print("\n Mistral:", response)
-
-def send_email_with_ollama(subject, recipient, body_prompt):
-    email_body = ask_ollama(
-        f"Напиши профессиональное письмо на русском языке по следующему описанию: {body_prompt}"
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            MAIN_MENU: [
+                MessageHandler(filters.Regex('^(Опрос 1 человека|Опрос 5 людей|Заглушка для улучшения|Отмена)$'), handle_main_menu)
+            ],
+            SINGLE_POLL_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_name)
+            ],
+            SINGLE_POLL_AGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_age)
+            ],
+            MULTI_POLL_CURRENT_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, multi_poll_name)
+            ],
+            MULTI_POLL_CURRENT_AGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, multi_poll_age)
+            ],
+            CHECK_SUBSCRIPTION: [
+                CallbackQueryHandler(check_subscription_handler)
+            ]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+        per_message=False,
+        per_chat=True,
+        per_user=True
     )
 
-    sender = os.getenv("EMAIL_USER")
-    password = os.getenv("EMAIL_PASS")
+    application.add_handler(conv_handler)
 
-    msg = MIMEText(email_body, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = sender
-    msg["To"] = recipient
+    application.run_polling()
 
-    try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(sender, password)
-            server.sendmail(sender, recipient, msg.as_string())
-        print(f"Письмо отправлено на {recipient}")
-        return True
-    except Exception as e:
-        print(f"Ошибка отправки: {str(e)}")
-        return False
-
-# send_email_with_ollama(
-#     "Коммерческое предложение",
-#     "email",
-#     "Предложить сотрудничество по разработке ИИ-решений"
-# )
-
-SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive'
-]
-
-def get_google_sheet(sheet_name):
-    creds = Credentials.from_service_account_file(
-        'service-account.json',
-        scopes=SCOPES
-    )
-    client = gspread.authorize(creds)
-    return client.open(sheet_name).sheet1
-
-def read_sheet(sheet):
-    """Чтение данных из таблицы"""
-    return sheet.get_all_records()  # Возвращает список словарей
-
-def write_to_sheet(sheet, data):
-    """Запись данных в таблицу"""
-    # data должен быть списком списков
-    sheet.append_rows(data)
-
-def update_cell(sheet, row, col, value):
-    """Обновление конкретной ячейки"""
-    sheet.update_cell(row, col, value)
-
-# Пример использования
-if __name__ == "__main__":
-    # Получаем доступ к таблице
-    sheet = get_google_sheet("table_name")
-
-    # Чтение данных
-    data = read_sheet(sheet)
-    print("Данные из таблицы:")
-    for row in data:
-        print(row)
-
-    # Запись новых данных
-    new_data = [
-        ["2023-07-11", "Новая запись", 42],
-        ["2023-07-12", "Еще одна запись", 99]
-    ]
-    write_to_sheet(sheet, new_data)
-    print("\nДанные успешно добавлены!")
-
-    # Обновление ячейки
-    update_cell(sheet, 2, 3, "Обновленное значение")
+if __name__ == '__main__':
+    main()

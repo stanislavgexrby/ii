@@ -1,24 +1,32 @@
-import logging
-from telegram import (
-    Update,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
-    KeyboardButton,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup
-)
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ConversationHandler,
-    ContextTypes,
-    filters
-)
-import gspread
-from google.oauth2.service_account import Credentials
-from config import BOT_TOKEN, SCOPES, SERVICE_ACCOUNT_FILE, SPREADSHEET_ID, CHANNEL_USERNAME, CHANNEL_ID
+import sys
+
+try:
+    import logging
+    from telegram import (
+        Update,
+        ReplyKeyboardMarkup,
+        ReplyKeyboardRemove,
+        KeyboardButton,
+        InlineKeyboardButton,
+        InlineKeyboardMarkup
+    )
+    from telegram.ext import (
+        Application,
+        CommandHandler,
+        MessageHandler,
+        CallbackQueryHandler,
+        ConversationHandler,
+        ContextTypes,
+        filters
+    )
+    import gspread
+    from google.oauth2.service_account import Credentials
+    from config import BOT_TOKEN, SCOPES, SERVICE_ACCOUNT_FILE, SPREADSHEET_ID, CHANNEL_USERNAME, CHANNEL_ID
+except ImportError as e:
+    print("Ошибка: Не установлены необходимые зависимости.")
+    print("Установите их командой: pip install -r requirements.txt")
+    print(f"Отсутствующая библиотека: {e.name}")
+    sys.exit(1)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -46,8 +54,14 @@ def create_subscription_keyboard() -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(keyboard)
 
+def create_main_menu_keyboard() -> ReplyKeyboardMarkup:
+    keyboard = [
+        ["Опрос 1 человека", "Опрос 5 людей"],
+        ["Заглушка для улучшения"]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
 def init_google_sheets():
-    """Инициализирует подключение к Google Таблицам"""
     try:
         creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
         client = gspread.authorize(creds)
@@ -70,7 +84,6 @@ async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def check_subscription_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) :
-    """Обрабатывает нажатие кнопки проверки подписки"""
     query = update.callback_query
     await query.answer()
 
@@ -111,14 +124,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return CHECK_SUBSCRIPTION
 
-    keyboard = [
-        ["Опрос 1 человека", "Опрос 5 людей"],
-        ["Заглушка для улучшения"]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(
         "Добро пожаловать! Выберите действие:",
-        reply_markup=reply_markup
+        reply_markup = create_main_menu_keyboard()
     )
     return MAIN_MENU
 
@@ -233,11 +241,9 @@ async def handle_placeholder(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "Этот функционал еще в разработке. "
     )
 
-    keyboard = [["Опрос 1 человека", "Опрос 5 людей"], ["Заглушка для улучшения"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(
         "Выберите действие:",
-        reply_markup=reply_markup
+        reply_markup=create_main_menu_keyboard()
     )
     return MAIN_MENU
 
@@ -245,7 +251,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id in user_data:
         del user_data[user_id]
-    
+
     await update.message.reply_text(
         "Операция отменена.",
         reply_markup=ReplyKeyboardRemove()

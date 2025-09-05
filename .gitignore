@@ -2,5 +2,5 @@
 .venv/
 service-account.json
 secretinfo.txt
-config.py
 __pycache__
+tgbot_for_cg/config.py
