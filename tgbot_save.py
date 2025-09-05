@@ -21,7 +21,7 @@ try:
     )
     import gspread
     from google.oauth2.service_account import Credentials
-    from config import BOT_TOKEN, SCOPES, SERVICE_ACCOUNT_FILE, SPREADSHEET_ID, CHANNEL_USERNAME, CHANNEL_ID
+    from tgbot_for_cg.config import BOT_TOKEN, SCOPES, SERVICE_ACCOUNT_FILE, SPREADSHEET_ID, CHANNEL_USERNAME, CHANNEL_ID
 except ImportError as e:
     print("Ошибка: Не установлены необходимые зависимости.")
     print("Установите их командой: pip install -r requirements.txt")
