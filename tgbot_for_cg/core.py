@@ -9,10 +9,24 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from .keyboards import create_subscription_keyboard, create_main_menu_keyboard
-from .config import SCOPES, SERVICE_ACCOUNT_FILE, SPREADSHEET_ID, CHANNEL_USERNAME, CHANNEL_ID
+from .keyboards import create_subscription_keyboard, create_main_menu_keyboard, create_agreement_keyboard, create_main_menu_admin_keyboard
+from .config import SCOPES, SERVICE_ACCOUNT_FILE, SPREADSHEET_ID, CHANNEL_USERNAME, CHANNEL_ID, ADMIN_ID
 from .logger_setup import logger
-from .global_states import user_data, MAIN_MENU, CHECK_SUBSCRIPTION, SINGLE_POLL_AGE, SINGLE_POLL_NAME, MULTI_POLL_COUNT, MULTI_POLL_CURRENT_AGE, MULTI_POLL_CURRENT_NAME
+from .global_states import (
+    user_data,
+    MAIN_MENU,
+    MAIN_MENU_ADMIN,
+    SINGLE_POLL_LAST_NAME,
+    SINGLE_POLL_NICK,
+    SINGLE_POLL_MMR,
+    SINGLE_POLL_ROLES,
+    SINGLE_POLL_DOTABUFF,
+    SINGLE_POLL_TG,
+    SINGLE_POLL_AGREEMENT,
+    MULTI_POLL_CURRENT_NAME,
+    MULTI_POLL_CURRENT_AGE,
+    CHECK_SUBSCRIPTION
+)
 
 def init_google_sheets():
     try:
@@ -47,13 +61,21 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_subscription(update, context):
+    user_id = update.effective_user.id
+    if user_id == ADMIN_ID:
         await update.message.reply_text(
-            'Для использования бота необходимо подписаться на наш канал!\n\n'
-            f'Подпишитесь на канал {CHANNEL_USERNAME} и нажмите кнопку "Я подписался"',
-            reply_markup=create_subscription_keyboard()
+            "Добро пожаловать в админ-панель! Выберите действие:",
+            reply_markup=create_main_menu_admin_keyboard()
         )
-        return CHECK_SUBSCRIPTION
+        return MAIN_MENU_ADMIN
+    else:
+        if not await check_subscription(update, context):
+            await update.message.reply_text(
+                'Для использования бота необходимо подписаться на наш канал!\n\n'
+                f'Подпишитесь на канал {CHANNEL_USERNAME} и нажмите кнопку "Я подписался"',
+                reply_markup=create_subscription_keyboard()
+            )
+            return CHECK_SUBSCRIPTION
 
     await update.message.reply_text(
         "Добро пожаловать! Выберите действие:",
@@ -63,27 +85,65 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def single_poll_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['name'] = update.message.text
-    await update.message.reply_text("Введите возраст:")
-    return SINGLE_POLL_AGE
+    await update.message.reply_text("Введите Фамилию:")
+    return SINGLE_POLL_LAST_NAME
 
-async def single_poll_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['age'] = update.message.text
+async def single_poll_last_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['last_name'] = update.message.text
+    await update.message.reply_text("Введите ник игрока:")
+    return SINGLE_POLL_NICK
+
+async def single_poll_nick(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['nick'] = update.message.text
+    await update.message.reply_text("Введите MMR:")
+    return SINGLE_POLL_MMR
+
+async def single_poll_mmr(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['mmr'] = update.message.text
+    await update.message.reply_text("Введите роли игрока цифрами:") # тут еще клавитуру мб
+    return SINGLE_POLL_ROLES
+
+async def single_poll_roles(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['roles'] = update.message.text
+    await update.message.reply_text("Введите ссылку на профиль в dotabuff:")
+    return SINGLE_POLL_DOTABUFF
+
+async def single_poll_dotabuff(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['dotabuff'] = update.message.text
+    await update.message.reply_text("Введите tg игрока через @:")
+    return SINGLE_POLL_TG
+
+async def single_poll_tg(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['tg'] = update.message.text
+    await update.message.reply_text(
+        "Солгласны ли Вы на обработку персональных данных?:",
+        reply_markup = create_agreement_keyboard()
+    )
+    return SINGLE_POLL_AGREEMENT
+
+async def single_poll_agreement(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # context.user_data['tg'] = update.message.text
+    await update.message.reply_text(
+        "Солгласны ли Вы на обработку персональных данных?:",
+        reply_markup = create_agreement_keyboard()
+    )
+    return SINGLE_POLL_AGREEMENT
+
+async def save(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         sheet = init_google_sheets()
         sheet.append_row([
-            update.effective_user.id,
-            context.user_data['name'],
-            context.user_data['age']
+            context.user_data.get('name', ''),
+            context.user_data.get('last_name', ''),
+            context.user_data.get('nick', ''),
+            context.user_data.get('mmr', ''),
+            context.user_data.get('roles', ''),
+            context.user_data.get('dotabuff', ''),
+            context.user_data.get('tg', ''),
         ])
-        await update.message.reply_text("Данные сохранены в таблицу!")
     except Exception as e:
         logger.error(f"Ошибка сохранения в Google Sheets: {e}")
         await update.message.reply_text("Ошибка при сохранении данных.")
-    await update.message.reply_text(
-        "Выберите действие:",
-        reply_markup=create_main_menu_keyboard()
-    )
-    return MAIN_MENU
 
 async def multi_poll_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id

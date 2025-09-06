@@ -19,3 +19,17 @@ def create_main_menu_keyboard() -> ReplyKeyboardMarkup:
         ["Отмена"]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def create_agreement_keyboard() -> ReplyKeyboardMarkup:
+    keyboard = [
+        ["Да"],
+        ["Нет"]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def create_main_menu_admin_keyboard() -> ReplyKeyboardMarkup:
+    keyboard = [
+        ["Проверка подписки"],
+        ["Удалить польователей"]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

@@ -1,17 +1,36 @@
-from tgbot_for_cg import init_google_sheets, handle_main_menu, check_subscription_handler
-from tgbot_for_cg import start, cancel
-from tgbot_for_cg import single_poll_age, single_poll_name, multi_poll_age, multi_poll_name
-from tgbot_for_cg import BOT_TOKEN
-from tgbot_for_cg import logger
 from tgbot_for_cg import (
-    user_data,
+    init_google_sheets,
+    handle_main_menu,
+    handle_main_menu_admin,
+    handle_agreement,
+    check_subscription_handler,
+    start,
+    cancel,
+    single_poll_last_name,
+    single_poll_name,
+    single_poll_nick,
+    single_poll_mmr,
+    single_poll_roles,
+    single_poll_dotabuff,
+    single_poll_tg,
+    save,
+    multi_poll_age,
+    multi_poll_name,
+    BOT_TOKEN,
+    logger,
     MAIN_MENU,
-    CHECK_SUBSCRIPTION,
-    SINGLE_POLL_AGE,
+    MAIN_MENU_ADMIN,
     SINGLE_POLL_NAME,
-    MULTI_POLL_COUNT,
+    SINGLE_POLL_LAST_NAME,
+    SINGLE_POLL_NICK,
+    SINGLE_POLL_MMR,
+    SINGLE_POLL_ROLES,
+    SINGLE_POLL_DOTABUFF,
+    SINGLE_POLL_TG,
+    SINGLE_POLL_AGREEMENT,
+    MULTI_POLL_CURRENT_NAME,
     MULTI_POLL_CURRENT_AGE,
-    MULTI_POLL_CURRENT_NAME
+    CHECK_SUBSCRIPTION
 )
 
 from telegram.ext import (
@@ -37,11 +56,32 @@ def main():
             MAIN_MENU: [
                 MessageHandler(filters.Regex('^(Опрос 1 человека|Опрос 5 людей|Заглушка для улучшения|Отмена)$'), handle_main_menu)
             ],
+            MAIN_MENU_ADMIN: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu_admin)
+            ],
             SINGLE_POLL_NAME: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_name)
             ],
-            SINGLE_POLL_AGE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_age)
+            SINGLE_POLL_LAST_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_last_name)
+            ],
+            SINGLE_POLL_NICK: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_nick)
+            ],
+            SINGLE_POLL_MMR: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_mmr)
+            ],
+            SINGLE_POLL_ROLES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_roles)
+            ],
+            SINGLE_POLL_DOTABUFF: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_dotabuff)
+            ],
+            SINGLE_POLL_TG: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_tg)
+            ],
+            SINGLE_POLL_AGREEMENT: [
+                MessageHandler(filters.Regex('^(Да|Нет)$'), handle_agreement)
             ],
             MULTI_POLL_CURRENT_NAME: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, multi_poll_name)
