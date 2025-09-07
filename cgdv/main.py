@@ -1,4 +1,4 @@
-# main.py
+# main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
 """
 GameMatch Bot - Telegram бот для знакомств геймеров
 Точка входа в приложение
@@ -43,11 +43,14 @@ async def main():
     bot = Bot(token=settings.BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
     
-    # Регистрация роутеров
-    dp.include_router(start.router)
-    dp.include_router(profile.router)
-    dp.include_router(matching.router)
-    dp.include_router(common.router)  # Должен быть последним
+    # 🚨 ИСПРАВЛЕНО: Правильный порядок регистрации роутеров
+    # Роутеры с фильтрами состояний ДОЛЖНЫ быть ПЕРВЫМИ!
+    dp.include_router(profile.router)   # ПЕРВЫМ - обрабатывает FSM состояния
+    dp.include_router(matching.router)  # ВТОРЫМ - может иметь состояния
+    dp.include_router(start.router)     # ТРЕТЬИМ - команды и callback'и
+    dp.include_router(common.router)    # ПОСЛЕДНИМ - fallback обработчики
+    
+    logger.info("📋 Роутеры зарегистрированы в правильном порядке")
     
     # Создание папки для данных
     os.makedirs('data', exist_ok=True)
@@ -57,15 +60,17 @@ async def main():
     # Уведомление админа о запуске
     try:
         await bot.send_message(
-            settings.ADMIN_ID,
+            settings.ADMIN_ID, 
             "🤖 GameMatch бот успешно запущен!\n\n"
             f"📊 Версия: 1.0\n"
-            f"🗂️ База данных: {db.db_path}"
+            f"🗂️ База данных: {db.db_path}\n"
+            f"🔧 Роутеры: profile → matching → start → common"
         )
     except Exception as e:
         logger.warning(f"Не удалось отправить уведомление админу: {e}")
     
     try:
+        # Запуск polling
         await dp.start_polling(bot, skip_updates=True)
     except Exception as e:
         logger.error(f"Ошибка при запуске бота: {e}")

@@ -1,13 +1,14 @@
-# handlers/common.py
+# handlers/common.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
 """
 Общие обработчики: неизвестные команды, ошибки
-Этот роутер должен подключаться последним!
+Этот роутер должен подключаться ПОСЛЕДНИМ!
 """
 
 import logging
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message, ErrorEvent
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import StateFilter
 
 from keyboards.keyboards import Keyboards
 from utils.texts import UNKNOWN_COMMAND_MESSAGE, USE_BUTTONS_MESSAGE
@@ -39,22 +40,13 @@ async def handle_unknown_callback(callback: CallbackQuery):
     except Exception as e:
         logger.error(f"Ошибка при показе главного меню после неизвестного callback: {e}")
 
-@router.message()
-async def handle_unknown_message(message: Message, state: FSMContext):
+# 🚨 ИСПРАВЛЕНО: Добавлен фильтр StateFilter(None)
+@router.message(StateFilter(None))  # Только если НЕТ активного FSM состояния!
+async def handle_unknown_message(message: Message):
     """
     Обработчик неизвестных текстовых сообщений
-    Срабатывает только если сообщение не обработано другими хендлерами
+    Срабатывает только если пользователь НЕ в процессе заполнения анкеты
     """
-    # Проверяем, находится ли пользователь в каком-то состоянии FSM
-    current_state = await state.get_state()
-    
-    if current_state:
-        # Пользователь в процессе заполнения анкеты или другом диалоге
-        # Не мешаем процессу
-        logger.info(f"Пользователь {message.from_user.id} в состоянии {current_state}, пропускаем обработку")
-        return
-    
-    # Обычное сообщение вне состояний
     logger.info(f"Неизвестное сообщение от {message.from_user.id}: {message.text}")
     
     await message.answer(
