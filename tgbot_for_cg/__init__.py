@@ -7,9 +7,12 @@ from .core import (
     single_poll_last_name,
     single_poll_nick,
     single_poll_mmr,
+    wrong_mmr_input,
     single_poll_roles,
+    wrong_roles_input,
     single_poll_dotabuff,
     single_poll_tg,
+    wrong_tg_input,
     save,
     multi_poll_age,
     multi_poll_name

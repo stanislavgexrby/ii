@@ -10,10 +10,12 @@ from tgbot_for_cg import (
     single_poll_name,
     single_poll_nick,
     single_poll_mmr,
+    wrong_mmr_input,
     single_poll_roles,
+    wrong_roles_input,
     single_poll_dotabuff,
     single_poll_tg,
-    save,
+    wrong_tg_input,
     multi_poll_age,
     multi_poll_name,
     BOT_TOKEN,
@@ -69,16 +71,19 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_nick)
             ],
             SINGLE_POLL_MMR: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_mmr)
+                MessageHandler(filters.Regex(r'^\d+$') & ~filters.COMMAND, single_poll_mmr),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, wrong_mmr_input)
             ],
             SINGLE_POLL_ROLES: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_roles)
+                MessageHandler(filters.Regex(r'^\d+(\s*,\s*\d+)*$') & ~filters.COMMAND, single_poll_roles),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, wrong_roles_input)
             ],
             SINGLE_POLL_DOTABUFF: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_dotabuff)
             ],
             SINGLE_POLL_TG: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, single_poll_tg)
+                MessageHandler(filters.Regex(r'^@[a-zA-Z0-9_]{5,32}$') & ~filters.COMMAND, single_poll_tg),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, wrong_tg_input)
             ],
             SINGLE_POLL_AGREEMENT: [
                 MessageHandler(filters.Regex('^(Да|Нет)$'), handle_agreement)

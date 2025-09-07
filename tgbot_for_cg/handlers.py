@@ -44,7 +44,7 @@ async def handle_agreement(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
     if text == "Да":
-        await save(update, context)
+        await save(update, context, True)
         await update.message.reply_text(
             "Спасибо за участие, ваши данные сохранены\nВыберите действие:",
             reply_markup=create_main_menu_keyboard()
