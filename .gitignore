@@ -28,5 +28,5 @@ share/python-wheels/
 *.egg
 MANIFEST
 .env
-.env.example
+cgdb/.env.example
 bot.log
