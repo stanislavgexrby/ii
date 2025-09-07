@@ -1,6 +1,6 @@
-# main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
+# main.py
 """
-GameMatch Bot - Telegram бот для знакомств геймеров
+TeammateBot - Бот для поиска сокомандников в Dota 2 и CS2
 Точка входа в приложение
 """
 
@@ -12,14 +12,14 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config.settings import Settings
 from database.database import Database
-from handlers import start, profile, matching, common
+from handlers import start, profile, search, likes
 
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('bot.log'),
+        logging.FileHandler('bot.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -43,28 +43,33 @@ async def main():
     bot = Bot(token=settings.BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
     
-    # 🚨 ИСПРАВЛЕНО: Правильный порядок регистрации роутеров
-    # Роутеры с фильтрами состояний ДОЛЖНЫ быть ПЕРВЫМИ!
-    dp.include_router(profile.router)   # ПЕРВЫМ - обрабатывает FSM состояния
-    dp.include_router(matching.router)  # ВТОРЫМ - может иметь состояния
-    dp.include_router(start.router)     # ТРЕТЬИМ - команды и callback'и
-    dp.include_router(common.router)    # ПОСЛЕДНИМ - fallback обработчики
+    # Регистрация роутеров
+    # Важно: роутеры с FSM состояниями должны быть первыми!
+    dp.include_router(profile.router)  # FSM для создания анкет
+    dp.include_router(search.router)   # FSM для поиска
+    dp.include_router(likes.router)    # Обработка лайков
+    dp.include_router(start.router)    # Команды и основная навигация
     
-    logger.info("📋 Роутеры зарегистрированы в правильном порядке")
+    logger.info("📋 Роутеры зарегистрированы")
     
     # Создание папки для данных
     os.makedirs('data', exist_ok=True)
     
-    logger.info("🚀 GameMatch бот запускается...")
+    logger.info("🚀 TeammateBot запускается...")
     
     # Уведомление админа о запуске
     try:
+        stats = db.get_stats()
         await bot.send_message(
             settings.ADMIN_ID, 
-            "🤖 GameMatch бот успешно запущен!\n\n"
-            f"📊 Версия: 1.0\n"
-            f"🗂️ База данных: {db.db_path}\n"
-            f"🔧 Роутеры: profile → matching → start → common"
+            f"🤖 TeammateBot успешно запущен!\n\n"
+            f"📊 Статистика:\n"
+            f"• Всего пользователей: {stats['total_users']}\n"
+            f"• Dota 2: {stats['dota_users']}\n"
+            f"• CS2: {stats['cs_users']}\n"
+            f"• Активных за неделю: {stats['active_users']}\n"
+            f"• Матчей: {stats['total_matches']}\n\n"
+            f"🎮 Бот готов к работе!"
         )
     except Exception as e:
         logger.warning(f"Не удалось отправить уведомление админу: {e}")

@@ -32,3 +32,4 @@ cgdv/.env.example
 .env.example
 cgdv/bot.log
 bot.log
+cgdv/data/gamebot.db

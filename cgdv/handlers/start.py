@@ -1,11 +1,20 @@
+# handlers/start.py
+"""
+Обработчики команд старта и выбора игры
+"""
+
 import logging
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 
 from database.database import Database
 from keyboards.keyboards import Keyboards
-from utils.texts import WELCOME_MESSAGE, WELCOME_BACK_MESSAGE, USE_BUTTONS_MESSAGE
+from utils.texts import (
+    WELCOME_MESSAGE, SUBSCRIPTION_REQUIRED, SUBSCRIPTION_SUCCESS,
+    HELP_MESSAGE
+)
+from config.settings import Settings
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -13,208 +22,194 @@ router = Router()
 # Инициализация компонентов
 db = Database()
 kb = Keyboards()
+settings = Settings()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
-    """
-    Обработчик команды /start
-    """
+    """Команда /start"""
     user_id = message.from_user.id
     username = message.from_user.username
     
     logger.info(f"👤 Пользователь {user_id} ({username}) запустил бота")
     
-    # Получаем или создаем пользователя
-    user = db.get_user(user_id)
-    
-    if not user:
-        # Новый пользователь
-        success = db.create_user(user_id, username)
-        if not success:
-            await message.answer("❌ Ошибка при создании профиля. Попробуйте позже.")
-            return
-        
-        # Приветственное сообщение для нового пользователя
-        await message.answer(
-            WELCOME_MESSAGE,
-            reply_markup=kb.create_profile()
-        )
-    
-    elif not user.get('profile_data') or not user['profile_data']:
-        # Пользователь есть, но анкета не заполнена
-        await message.answer(
-            WELCOME_MESSAGE,
-            reply_markup=kb.create_profile()
-        )
-    
-    else:
-        # Существующий пользователь с анкетой
-        name = user['profile_data'].get('name', 'геймер')
-        welcome_text = WELCOME_BACK_MESSAGE.format(name=name)
-        
-        await message.answer(
-            welcome_text,
-            reply_markup=kb.main_menu()
-        )
-    
-    # Обновляем время последней активности
-    db.update_user(user_id, username=username)
-
-@router.callback_query(F.data == "main_menu")
-async def show_main_menu(callback: CallbackQuery):
-    """
-    Показать главное меню
-    """
-    try:
-        await callback.message.edit_text(
-            "🎮 GameMatch - Главное меню\n\n"
-            "Выберите действие:",
-            reply_markup=kb.main_menu()
-        )
-        await callback.answer()
-    except Exception as e:
-        logger.error(f"Ошибка показа главного меню: {e}")
-        await callback.answer("❌ Ошибка обновления меню")
-
-@router.callback_query(F.data == "settings")
-async def show_settings(callback: CallbackQuery):
-    """
-    Показать меню настроек
-    """
-    settings_text = (
-        "⚙️ Настройки\n\n"
-        "Здесь вы можете настроить уведомления, "
-        "приватность и посмотреть статистику.\n\n"
-        "🚧 Некоторые функции в разработке..."
+    # Показываем приветствие и выбор игры
+    await message.answer(
+        WELCOME_MESSAGE,
+        reply_markup=kb.game_selection()
     )
-    
-    try:
-        await callback.message.edit_text(
-            settings_text,
-            reply_markup=kb.settings_menu()
-        )
-        await callback.answer()
-    except Exception as e:
-        logger.error(f"Ошибка показа настроек: {e}")
-        await callback.answer("❌ Ошибка загрузки настроек")
-
-@router.callback_query(F.data.startswith("settings_"))
-async def handle_settings(callback: CallbackQuery):
-    """
-    Обработка настроек
-    """
-    setting_type = callback.data.split("_")[1]
-    
-    if setting_type == "notifications":
-        text = (
-            "🔔 Уведомления\n\n"
-            "• О новых матчах: ✅ Включено\n"
-            "• О новых лайках: ✅ Включено\n"
-            "• Напоминания: ✅ Включено\n\n"
-            "🚧 Настройка уведомлений в разработке"
-        )
-    
-    elif setting_type == "privacy":
-        text = (
-            "🔒 Приватность\n\n"
-            "• Показывать онлайн: ✅ Да\n"
-            "• Показывать возраст: ✅ Да\n"
-            "• Видимость профиля: 👁️ Всем\n\n"
-            "🚧 Настройки приватности в разработке"
-        )
-    
-    elif setting_type == "stats":
-        # Получаем статистику пользователя
-        user_id = callback.from_user.id
-        user = db.get_user(user_id)
-        
-        # Простая статистика
-        likes_given = len(db._execute_query(
-            "SELECT id FROM likes WHERE from_user_id = ?", 
-            (user_id,)
-        ))
-        
-        matches_count = len(db.get_user_matches(user_id))
-        
-        text = (
-            f"📊 Ваша статистика\n\n"
-            f"👍 Лайков отправлено: {likes_given}\n"
-            f"💖 Матчей: {matches_count}\n"
-            f"📅 В боте с: {user['created_at'][:10] if user else 'неизвестно'}\n"
-        )
-    
-    else:
-        text = "🚧 Раздел в разработке"
-    
-    try:
-        await callback.message.edit_text(
-            text,
-            reply_markup=kb.back_to_main()
-        )
-        await callback.answer()
-    except Exception as e:
-        logger.error(f"Ошибка обработки настроек: {e}")
-        await callback.answer("❌ Ошибка загрузки настроек")
 
 @router.message(Command("help"))
 async def cmd_help(message: Message):
-    """
-    Команда помощи
-    """
-    help_text = (
-        "🎮 GameMatch Bot - Помощь\n\n"
-        "📝 Команды:\n"
-        "/start - Запуск бота\n"
-        "/help - Эта справка\n"
-        "/stats - Статистика (только для админа)\n\n"
-        "🎯 Как пользоваться:\n"
-        "1. Создайте анкету\n"
-        "2. Просматривайте анкеты других\n"
-        "3. Ставьте лайки\n"
-        "4. При взаимном лайке создается матч\n\n"
-        "💬 Поддержка: обратитесь к администратору"
-    )
-    
-    await message.answer(help_text, reply_markup=kb.main_menu())
+    """Команда /help"""
+    await message.answer(HELP_MESSAGE)
 
-@router.message(Command("stats"))
-async def cmd_stats(message: Message):
-    """
-    Статистика для администратора
-    """
-    from config.settings import Settings
-    settings = Settings()
+@router.callback_query(F.data.startswith("game_"))
+async def select_game(callback: CallbackQuery, bot: Bot):
+    """Выбор игры"""
+    game = callback.data.split("_")[1]  # dota или cs
+    user_id = callback.from_user.id
+    username = callback.from_user.username
     
-    if message.from_user.id != settings.ADMIN_ID:
-        await message.answer("❌ Команда доступна только администратору")
-        return
+    logger.info(f"🎮 Пользователь {user_id} выбрал игру: {game}")
+    
+    # Проверяем подписку на канал
+    channel_id = settings.get_channel_id(game)
     
     try:
-        stats = db.get_stats()
-        stats_text = (
-            f"📊 Статистика бота:\n\n"
-            f"👥 Всего пользователей: {stats.get('total_users', 0)}\n"
-            f"🔥 Активных за неделю: {stats.get('active_users', 0)}\n"
-            f"💖 Всего матчей: {stats.get('total_matches', 0)}\n"
-            f"👍 Лайков сегодня: {stats.get('today_likes', 0)}\n\n"
-            f"📈 Конверсия в матчи: "
-            f"{(stats.get('total_matches', 0) / max(stats.get('total_users', 1), 1) * 100):.1f}%"
-        )
+        member = await bot.get_chat_member(channel_id, user_id)
         
-        await message.answer(stats_text, reply_markup=kb.admin_menu())
-        
+        # Проверяем статус подписки
+        if member.status in ['member', 'administrator', 'creator']:
+            # Пользователь подписан
+            await handle_subscription_success(callback, game)
+        else:
+            # Пользователь не подписан
+            await request_subscription(callback, game, channel_id)
+    
     except Exception as e:
-        logger.error(f"Ошибка получения статистики: {e}")
-        await message.answer("❌ Ошибка получения статистики")
+        logger.error(f"Ошибка проверки подписки: {e}")
+        # Если не можем проверить подписку, пропускаем проверку
+        await handle_subscription_success(callback, game)
+
+async def request_subscription(callback: CallbackQuery, game: str, channel_id: str):
+    """Запрос подписки на канал"""
+    game_name = "Dota 2" if game == "dota" else "CS2"
+    
+    text = SUBSCRIPTION_REQUIRED.format(channel=channel_id)
+    text += f"\n\n🎮 Игра: {game_name}"
+    
+    # Сохраняем выбранную игру в callback_data
+    keyboard = kb.confirm_subscription()
+    # Модифицируем callback_data чтобы передать игру
+    new_keyboard = []
+    for row in keyboard.inline_keyboard:
+        new_row = []
+        for button in row:
+            if button.callback_data == "check_subscription":
+                new_button = button.model_copy()
+                new_button.callback_data = f"check_subscription_{game}"
+                new_row.append(new_button)
+            elif button.callback_data == "recheck_subscription":
+                new_button = button.model_copy()
+                new_button.callback_data = f"recheck_subscription_{game}"
+                new_row.append(new_button)
+            else:
+                new_row.append(button)
+        new_keyboard.append(new_row)
+    
+    from aiogram.types import InlineKeyboardMarkup
+    modified_keyboard = InlineKeyboardMarkup(inline_keyboard=new_keyboard)
+    
+    await callback.message.edit_text(text, reply_markup=modified_keyboard)
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("check_subscription_"))
+async def check_subscription(callback: CallbackQuery, bot: Bot):
+    """Проверка подписки"""
+    game = callback.data.split("_")[2]  # dota или cs
+    user_id = callback.from_user.id
+    channel_id = settings.get_channel_id(game)
+    
+    try:
+        member = await bot.get_chat_member(channel_id, user_id)
+        
+        if member.status in ['member', 'administrator', 'creator']:
+            await handle_subscription_success(callback, game)
+        else:
+            await callback.answer("❌ Вы еще не подписались на канал", show_alert=True)
+    
+    except Exception as e:
+        logger.error(f"Ошибка проверки подписки: {e}")
+        await callback.answer("❌ Ошибка проверки подписки", show_alert=True)
+
+@router.callback_query(F.data.startswith("recheck_subscription_"))
+async def recheck_subscription(callback: CallbackQuery, bot: Bot):
+    """Повторная проверка подписки"""
+    await check_subscription(callback, bot)
+
+async def handle_subscription_success(callback: CallbackQuery, game: str):
+    """Обработка успешной подписки"""
+    user_id = callback.from_user.id
+    username = callback.from_user.username
+    
+    # Создаем или обновляем пользователя в БД
+    user = db.get_user(user_id)
+    
+    if not user:
+        success = db.create_user(user_id, username, game)
+        if not success:
+            await callback.answer("❌ Ошибка создания профиля", show_alert=True)
+            return
+        user = db.get_user(user_id)
+    
+    # Обновляем активность
+    db.update_last_activity(user_id)
+    
+    # Проверяем есть ли заполненная анкета
+    has_profile = (user and user['name'] is not None)
+    
+    # Показываем главное меню
+    await show_main_menu(callback, has_profile)
+
+@router.callback_query(F.data == "main_menu")
+async def show_main_menu_callback(callback: CallbackQuery):
+    """Показать главное меню из callback"""
+    user_id = callback.from_user.id
+    user = db.get_user(user_id)
+    
+    if not user:
+        # Если пользователя нет, возвращаем к выбору игры
+        await callback.message.edit_text(
+            WELCOME_MESSAGE,
+            reply_markup=kb.game_selection()
+        )
+        await callback.answer()
+        return
+    
+    has_profile = (user['name'] is not None)
+    await show_main_menu(callback, has_profile)
+
+async def show_main_menu(callback: CallbackQuery, has_profile: bool):
+    """Показать главное меню"""
+    text = "🏠 Главное меню\n\n"
+    
+    if has_profile:
+        text += "Выберите действие:"
+    else:
+        text += "Для начала работы создайте анкету:"
+    
+    await callback.message.edit_text(
+        text,
+        reply_markup=kb.main_menu(has_profile)
+    )
+    await callback.answer()
+
+# Команды для админа
+@router.message(Command("admin"))
+async def cmd_admin(message: Message):
+    """Админ панель"""
+    if message.from_user.id != settings.ADMIN_ID:
+        await message.answer("❌ У вас нет прав администратора")
+        return
+    
+    stats = db.get_stats()
+    
+    text = (
+        "👑 Админ панель\n\n"
+        f"📊 Статистика:\n"
+        f"• Всего пользователей: {stats['total_users']}\n"
+        f"• Dota 2: {stats['dota_users']}\n"
+        f"• CS2: {stats['cs_users']}\n"
+        f"• Активных за неделю: {stats['active_users']}\n"
+        f"• Матчей: {stats['total_matches']}\n"
+        f"• Лайков сегодня: {stats['today_likes']}"
+    )
+    
+    await message.answer(text, reply_markup=kb.admin_menu())
 
 @router.callback_query(F.data.startswith("admin_"))
 async def handle_admin_actions(callback: CallbackQuery):
-    """
-    Обработка админ действий
-    """
-    from config.settings import Settings
-    settings = Settings()
-    
+    """Обработка админ действий"""
     if callback.from_user.id != settings.ADMIN_ID:
         await callback.answer("❌ Доступ запрещен", show_alert=True)
         return
@@ -222,66 +217,51 @@ async def handle_admin_actions(callback: CallbackQuery):
     action = callback.data.split("_")[1]
     
     if action == "stats":
-        # Детальная статистика
         stats = db.get_stats()
         
-        # Дополнительные метрики
-        total_likes = len(db._execute_query("SELECT id FROM likes"))
-        avg_age_result = db._execute_query(
-            "SELECT AVG(CAST(JSON_EXTRACT(profile_data, '$.age') AS INTEGER)) as avg_age "
-            "FROM users WHERE profile_data IS NOT NULL"
-        )
-        avg_age = avg_age_result[0]['avg_age'] if avg_age_result and avg_age_result[0]['avg_age'] else 0
-        
-        detailed_stats = (
-            f"📊 Детальная статистика:\n\n"
-            f"👥 Всего пользователей: {stats.get('total_users', 0)}\n"
-            f"🔥 Активных за неделю: {stats.get('active_users', 0)}\n"
-            f"💖 Всего матчей: {stats.get('total_matches', 0)}\n"
-            f"👍 Всего лайков: {total_likes}\n"
-            f"👍 Лайков сегодня: {stats.get('today_likes', 0)}\n"
-            f"🎂 Средний возраст: {avg_age:.1f} лет\n\n"
-            f"📈 Метрики:\n"
-            f"• Конверсия в матчи: {(stats.get('total_matches', 0) / max(total_likes, 1) * 100):.1f}%\n"
-            f"• Активность: {(stats.get('active_users', 0) / max(stats.get('total_users', 1), 1) * 100):.1f}%"
+        text = (
+            "📊 Детальная статистика:\n\n"
+            f"👥 Всего пользователей: {stats['total_users']}\n"
+            f"🎮 Dota 2: {stats['dota_users']}\n"
+            f"🔫 CS2: {stats['cs_users']}\n"
+            f"🔥 Активных за неделю: {stats['active_users']}\n"
+            f"💖 Матчей: {stats['total_matches']}\n"
+            f"👍 Лайков сегодня: {stats['today_likes']}\n\n"
+            f"📈 Активность: {(stats['active_users'] / max(stats['total_users'], 1) * 100):.1f}%"
         )
         
-        await callback.message.edit_text(detailed_stats, reply_markup=kb.back_to_main())
+        await callback.message.edit_text(text, reply_markup=kb.back_to_main())
+    
+    elif action == "users":
+        # Показать последних пользователей
+        users = db._execute_query(
+            "SELECT telegram_id, username, game, name, created_at FROM users ORDER BY created_at DESC LIMIT 10"
+        )
+        
+        text = "👥 Последние 10 пользователей:\n\n"
+        
+        for user in users:
+            name = user['name'] if user['name'] else "Без анкеты"
+            text += f"• {name} (@{user['username'] or 'без username'}) - {user['game']}\n"
+        
+        await callback.message.edit_text(text, reply_markup=kb.back_to_main())
     
     elif action == "cleanup":
-        # Очистка неактивных пользователей
-        cleaned = db.cleanup_inactive_users(30)
+        # Очистка неактивных пользователей (пример)
+        from datetime import datetime, timedelta
         
-        await callback.message.edit_text(
-            f"🧹 Очистка завершена\n\n"
-            f"Деактивировано пользователей: {cleaned}\n"
-            f"(неактивных более 30 дней)",
-            reply_markup=kb.back_to_main()
+        month_ago = (datetime.now() - timedelta(days=30)).isoformat()
+        inactive_count = len(db._execute_query(
+            "SELECT id FROM users WHERE last_activity < ?", 
+            (month_ago,)
+        ))
+        
+        text = (
+            f"🧹 Очистка базы данных\n\n"
+            f"Найдено неактивных пользователей (более 30 дней): {inactive_count}\n\n"
+            f"🚧 Функция автоочистки в разработке"
         )
-    
-    elif action == "broadcast":
-        # Рассылка (заготовка)
-        await callback.message.edit_text(
-            "📢 Рассылка\n\n"
-            "🚧 Функция в разработке\n\n"
-            "Планируется:\n"
-            "• Рассылка всем пользователям\n"
-            "• Рассылка активным пользователям\n"
-            "• Рассылка по критериям",
-            reply_markup=kb.back_to_main()
-        )
+        
+        await callback.message.edit_text(text, reply_markup=kb.back_to_main())
     
     await callback.answer()
-
-@router.message()
-async def handle_unknown_text(message: Message):
-    """
-    Обработка неизвестных текстовых сообщений
-    """
-    # Проверяем, не находится ли пользователь в процессе создания анкеты
-    # Если да, то этот обработчик не сработает, так как у других роутеров выше приоритет
-    
-    await message.answer(
-        USE_BUTTONS_MESSAGE,
-        reply_markup=kb.main_menu()
-    )

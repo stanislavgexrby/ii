@@ -1,7 +1,7 @@
+# run.sh - Скрипт запуска для Linux/macOS
 #!/bin/bash
-# run.sh - Скрипт sзапуска для Linux/macOS
 
-echo "🎮 Запуск GameMatch бота..."
+echo "🎮 Запуск TeammateBot..."
 
 # Проверяем наличие Python
 if ! command -v python3 &> /dev/null; then
@@ -56,13 +56,15 @@ if [ -f ".env" ]; then
     # Загружаем переменные из .env
     export $(cat .env | grep -v '^#' | xargs)
 else
-    echo "⚠️  Файл .env не найден. Проверьте настройки в config/settings.py"
+    echo "⚠️  Файл .env не найден. Создайте его из .env.example"
+    echo "Или запустите: python3 install.py"
+    exit 1
 fi
 
 # Проверяем токен бота
 if [ -z "$BOT_TOKEN" ] || [ "$BOT_TOKEN" = "your_bot_token_here" ]; then
     echo "❌ BOT_TOKEN не настроен!"
-    echo "Получите токен у @BotFather и добавьте в .env файл или config/settings.py"
+    echo "Получите токен у @BotFather и добавьте в .env файл"
     exit 1
 fi
 
