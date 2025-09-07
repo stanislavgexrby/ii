@@ -125,3 +125,11 @@
 2025-09-07 16:39:09,787 - aiogram.dispatcher - WARNING - Received SIGINT signal
 2025-09-07 16:39:09,787 - aiogram.dispatcher - INFO - Polling stopped for bot @cgtest111bot id=8495792418 - 'CGTest1'
 2025-09-07 16:39:09,787 - aiogram.dispatcher - INFO - Polling stopped
+2025-09-07 16:42:26,338 - config.settings - INFO - ✅ Конфигурация прошла валидацию
+2025-09-07 16:42:26,339 - database.database - INFO - 📁 База данных инициализирована: data/gamebot.db
+2025-09-07 16:42:26,343 - __main__ - INFO - 🚀 GameMatch бот запускается...
+2025-09-07 16:42:26,560 - aiogram.dispatcher - INFO - Start polling
+2025-09-07 16:42:26,613 - aiogram.dispatcher - INFO - Run polling for bot @cgtest111bot id=8495792418 - 'CGTest1'
+2025-09-07 16:42:32,455 - aiogram.dispatcher - WARNING - Received SIGINT signal
+2025-09-07 16:42:32,455 - aiogram.dispatcher - INFO - Polling stopped for bot @cgtest111bot id=8495792418 - 'CGTest1'
+2025-09-07 16:42:32,455 - aiogram.dispatcher - INFO - Polling stopped
