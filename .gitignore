@@ -29,5 +29,6 @@ share/python-wheels/
 MANIFEST
 .env
 cgdv/.env.example
+.env.example
 cgdv/bot.log
 bot.log
