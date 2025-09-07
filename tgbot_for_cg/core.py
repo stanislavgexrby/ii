@@ -198,9 +198,10 @@ async def single_poll_dotabuff(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def single_poll_tg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['tg'] = update.message.text
+    # if not await check_subscription_by_username(context, context.user_data['tg']):
     if not await check_subscription(update, context):
         await update.message.reply_text(
-                'Данный телеграмм аккаунт не подписан на канал {CHANNEL_USERNAME}.\n\n'
+                f'Данный телеграмм аккаунт не подписан на канал {CHANNEL_USERNAME}.\n\n'
                 f'Если в момент окончания регистрации на турнир данный аккаунт не будет подписан, к участию игрок не будет допущен'
         )
     await update.message.reply_text(
